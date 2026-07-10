@@ -99,3 +99,7 @@ $ python s3/make_s3_site.py
 ```
 
 _(In the future, I will add some info about interactivity, logging, and daemon execution here.)_
+
+## Issues
+
+I have not been able to upload much data yet to S3 because of hitting some quotas imposed by MSI or AWS. I will try to figure it out.
