@@ -1,13 +1,15 @@
+import datetime
+import json
+import mimetypes
 import os
 import posixpath
+import pprint
 import tempfile
-import mimetypes
-import json
-import datetime
 from collections import deque
 from enum import Enum
+
 import boto3
-import pprint
+from bs4 import BeautifulSoup
 
 # todo:
 #   - add logging
@@ -17,23 +19,27 @@ import pprint
 #   - actually convert Windows paths, if needed
 
 # CONFIG VARIABLES:
-s3_endpoint = "https://s3.msi.umn.edu"  # host domain for the bucket
-s3_bucket = "foxsi-public"  # bucket name
-s3_site_path = "site"  # path in bucket to put HTML in
-s3_data_folder = "foxsi"  # a folder in the bucket to filter for data
+s3_bucket = "foxsi-public"  # the bucket name on S3
+s3_site_path = "site"  # path in the bucket to upload HTML to. WILL OVERWRITE!
+s3_data_folder = "data"  # a folder in the bucket to search for data
+# the path on your local system to store the website on before it is uploaded:
+local_swap_folder = os.path.abspath(
+    os.path.join(
+        "s3",
+        "_site",
+        s3_site_path,
+    )
+)  # in the future, I will use tempfiles for this.
+dry_run = (
+    True  # if True, just print what will be written without actually doing it to S3
+)
 
-local_swap_folder = os.path.join(
-    "/Users",
-    "thanasi",
-    "Documents",
-    "FOXSI",
-    "Data",
-    "storage",
-    "s3-test",
-    s3_site_path,
-)  # a place to put temporary html before dumping to S3.
+
+s3_endpoint = "https://s3.msi.umn.edu"  # host domain for the bucket
+do_s3 = not dry_run
 
 mimetypes.init()
+
 
 class S3File:
     def __init__(self, path, modtime, size, etag):
@@ -141,7 +147,9 @@ class HTMLPage:
                 """
         page += self.table()
         page += "</div></body></html>"
-        return page
+
+        soup = BeautifulSoup(page, features="html.parser")
+        return soup.prettify()
 
     def write(self):
         # write self.mkpage() to os.join(local_root, relpath, index.html)
@@ -230,12 +238,12 @@ def upload_folder(
             )
             mime, enc = mimetypes.guess_type(source_path)
             if mime is None:
-               raise ValueError(f"MIME type cannot be found for {source_path}") 
-            client.upload_file(
-                source_path, bucket, posixpath.join(destpath, file),
-                ExtraArgs={
-                    "ContentType": mime
-                }
+                raise ValueError(f"MIME type cannot be found for {source_path}")
+            do_s3 and client.upload_file(
+                source_path,
+                bucket,
+                posixpath.join(destpath, file),
+                ExtraArgs={"ContentType": mime},
             )
         # NOTE: for this to work, need to set boto3 configurations:
         # request_checksum_calculation = when_required
@@ -260,7 +268,7 @@ if __name__ == "__main__":
 
     client = boto3.client("s3", endpoint_url=s3_endpoint)
     response = client.list_buckets()
-    print("buckets: ")
+    print("found your buckets: ")
     for bucket in response["Buckets"]:
         print(f"  {bucket['Name']}")
 
@@ -288,46 +296,49 @@ if __name__ == "__main__":
                 # )
                 fnames.append(this_file.path)
             else:
-                print(obj["Key"])
+                # print(obj["Key"])
+                pass
 
     # reconstruct the file structure from the linear file list
-    print("\n\nreconstruction:-----------------------------")
+    print("\nreconsructing folder structure...")
     file_tree = gen_structure(flist)
-    pprint.pprint(file_tree)
+    # pprint.pprint(file_tree)
 
     # breadth-first walk the file structure, and emit an HTML page at each layer
-    print("\n\ncreating HTML:------------------------------")
+    print("\ncreating HTML...")
     html_tree(file_tree)
 
     # put new HTML in the bucket
-    print("local_root:", local_swap_folder)
+    print("\nlocal site root:", local_swap_folder)
     site_dest = posixpath.join(s3_endpoint, s3_bucket, s3_site_path)
-    print("the site will be uploaded to", site_dest)
+    print("\nthe site will be uploaded to", site_dest)
     upload_folder(client)
 
-
-    print('\ncurrent ACL:')
+    print("\ncurrent ACL:")
     result = client.get_bucket_acl(Bucket=s3_bucket)
     print(result)
-    print('\n\n')
 
-    print("updating bucket policy...")
+    print("\nupdating bucket policy...")
     # set bucket permissions
     bucket_policy = {
-        'Version': "2012-10-17",
-        'Statement': [{
-            'Sid': 'AddPerm',
-            'Effect': 'Allow',
-            'Principal': '*',
-            'Action': 's3:GetObject',
-            'Resource': [f'arn:aws:s3:::{s3_bucket}/{s3_site_path}/*', f'arn:aws:s3:::{s3_bucket}/{s3_data_folder}/*']
-        }]
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Sid": "AddPerm",
+                "Effect": "Allow",
+                "Principal": "*",
+                "Action": "s3:GetObject",
+                "Resource": [
+                    f"arn:aws:s3:::{s3_bucket}/{s3_site_path}/*",
+                    f"arn:aws:s3:::{s3_bucket}/{s3_data_folder}/*",
+                ],
+            }
+        ],
     }
     bucket_policy = json.dumps(bucket_policy)
     print(bucket_policy)
     # # Set the new policy
-    client.put_bucket_policy(Bucket=s3_bucket, Policy=bucket_policy)
-
+    do_s3 and client.put_bucket_policy(Bucket=s3_bucket, Policy=bucket_policy)
 
     # configure the bucket
     # see: https://docs.aws.amazon.com/boto3/latest/guide/s3-example-static-web-host.html
@@ -339,5 +350,5 @@ if __name__ == "__main__":
     # client.put_bucket_website(
     #     Bucket=s3_bucket, WebsiteConfiguration=website_configuration
     # )
-    # 
-    #^ this fails!
+    #
+    # ^ this fails!
