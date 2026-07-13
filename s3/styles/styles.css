@@ -1,0 +1,24 @@
+body {
+    font-family: "Avenir", "Futura", "Arial", sans-serif;
+    font-size: 10pt
+}
+    
+table {
+    width: max-content;
+    table-layout: fixed;
+    border-collapse: collapse;
+    border-spacing: 20px 0px;
+    border-bottom: 1px solid #272727
+
+}
+
+th {
+    border-bottom: 1px solid #272727; 
+    padding: 2px;
+    text-align: left;
+}
+
+table, th, td {
+    text-align: left;
+    font-family: "OCR-B", "SF Mono", "Consolas", "DejaVu Sans Mono", "Roboto Mono", "Courier", monospace;
+}

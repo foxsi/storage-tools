@@ -79,13 +79,14 @@ Thanasi can provide some canned permissions files if that makes things easier.
 
 ### Before you run
 
-At the top of [the script](make_s3_site.py) are four important variables:
+Check the file `config.toml` that comes with this repository. The script will read this file and prompt you through configuration as you go, but the default values should not be harmful.
 
-1. `s3_bucket` is the S3 bucket name you want to read and write to.
-2. `s3_site_path` is the path within the bucket you want to deposit the website files in. **NOTE:** if there is already data in this folder on S3, it may be overwritten!
-3. `s3_data_folder` is the path within the bucket to search for data files. 
-4. `dry_run`, if set to `True`, will only read from S3 but not write. You will still see all the printout.
-5. `local_swap_folder` is the path on your own computer that the website will be temporarily stored in before it is uploaded. **NOTE:** if there is already data in this folder on your computer, it may be overwritten!
+There is a helpful flag
+```toml
+[s3]
+dryrun = true
+```
+you can set to `true` to run the script without actually doing any write operations on the S3 bucket. You'll just see the printout of files and folders that will be modified.
 
 ### Running
 

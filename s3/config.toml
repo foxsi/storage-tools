@@ -1,0 +1,17 @@
+[s3]
+dryrun = false  # if dryrun is `true`, no data will be written to S3 bucket.
+bucket = 'foxsi-public'                 # name of bucket
+datapath = 'data'                       # path in bucket to READ data files from
+sitepath = 'site'                       # path in bucket to WRITE website files
+endpoint = 'https://s3.msi.umn.edu'     # endpoint host for the bucket data
+
+[local]
+# valid local.path values are `false` or a path 
+# string (`true` is NOT a valid value).
+# 
+# If local.path is set to `false`, a temporary 
+# folder will be created using Python's tempfile 
+# library.
+path = false
+# set interactive = false to disable console dialog with user when running.
+interactive = true

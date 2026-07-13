@@ -1,3 +1,4 @@
+import os
 import posixpath
 import sys
 import mimetypes
@@ -8,8 +9,8 @@ s3_bucket = "foxsi-public"  # bucket name
 s3_site_path = "site"  # path in bucket to put HTML in
 
 if __name__ == "__main__":
-    source = sys.argv[1]
-    destpath = sys.argv[2]
+    source = os.path.abspath(sys.argv[1])
+    destpath = posixpath.normpath(sys.argv[2])
     if len(sys.argv) > 3:
         mime = sys.argv[3]
     else:
@@ -17,6 +18,8 @@ if __name__ == "__main__":
         if mime is None:
             mime = "text/html"
 
-    print(f"uploading {source} to {posixpath.join(s3_endpoint, s3_bucket, destpath)}")
+    print('using MIME type', mime)
+
+    print(f"uploading {source} to {posixpath.join(s3_endpoint, s3_bucket, destpath, os.path.basename(source))}")
     client = boto3.client("s3", endpoint_url=s3_endpoint)
-    client.upload_file(source, s3_bucket, destpath, ExtraArgs={"ContentType": mime})
+    s = client.upload_file(source, s3_bucket, os.path.join(destpath, os.path.basename(source)), ExtraArgs={"ContentType": mime})
