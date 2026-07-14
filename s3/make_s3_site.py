@@ -1,18 +1,19 @@
 """Upload a static HTML file listing for an S3 bucket."""
 
 import json
-import tomllib
 import mimetypes
 import os
 import posixpath
-import tqdm
-import inquirer
 import pprint
 import tempfile
+import warnings
 from collections import deque
 from enum import Enum
 
 import boto3
+import inquirer
+import tomllib
+import tqdm
 from botocore.exceptions import ClientError
 from bs4 import BeautifulSoup
 
@@ -34,7 +35,10 @@ class S3SiteConfig:
         sitepath="site",
         localpath=tempfile.TemporaryDirectory(),
         dryrun=False,
-        interactive=True
+        interactive=True,
+        clear_sitepath=False,
+        landingpath=None,
+        auxpath=[],
     ):
         print()
         # if provided, favor the config file passed in
@@ -55,6 +59,11 @@ class S3SiteConfig:
             self.localpath = localpath
             self.do_s3_write = not dryrun
             self.interactive = interactive
+            self.clear_sitepath = clear_sitepath
+            self.landingpath = (
+                os.path.abspath(landingpath) if landingpath is not None else None
+            )
+            self.auxpath = [os.path.abspath(p) for p in auxpath]
 
         # tempfile.TemporaryDirectory doesn't behave like a
         # usual path when manipulating path strings, so this
@@ -70,6 +79,7 @@ class S3SiteConfig:
             self.datapath = d["s3"]["datapath"]
             self.sitepath = d["s3"]["sitepath"]
             self.do_s3_write = not d["s3"]["dryrun"]
+            self.clear_sitepath = d["s3"]["clear_sitepath"]
             if not d["local"]["path"]:
                 self.localpath = tempfile.TemporaryDirectory()
             else:
@@ -78,6 +88,12 @@ class S3SiteConfig:
                     os.makedirs(loc)
                 self.localpath = loc
             self.interactive = d["local"]["interactive"]
+            self.landingpath = (
+                os.path.abspath(d["local"]["landingpath"])
+                if d["local"]["landingpath"] != ""
+                else None
+            )
+            self.auxpath = [os.path.abspath(p) for p in d["local"]["auxpath"]]
 
     def __str__(self):
         out = "S3SiteConfig:"
@@ -105,6 +121,29 @@ class S3SiteConfig:
         else:
             printc(
                 "couldn't find any source for AWS secret key or access key! See boto3 documentation for adding a config file, credentials file, or using environmental variables.",
+                color="red",
+            )
+
+        # if landing page and auxpath are exist, good.
+        print("   checking auxiliary paths...", end="", flush=True)
+        bads = []
+        for p in self.auxpath:
+            if not os.path.exists(p):
+                bads.append(p)
+        if not p:
+            printc(
+                f"the auxiliary paths {bads} are defined but the folder(s) don't exist!",
+                color="red",
+            )
+        else:
+            printc("done", color="green")
+
+        print("   checking landing page...", end="", flush=True)
+        if self.landingpath is None or os.path.exists(self.landingpath):
+            printc("done", color="green")
+        else:
+            printc(
+                f"the landing page path {self.landingpath} is defined but there is no file there!",
                 color="red",
             )
 
@@ -168,6 +207,12 @@ class S3SiteConfig:
         printc(self.datapath, color="green")
         print("   local folder for HTML:", end="")
         printc(self.localpath, color="green")
+        print("   landing page path:", end="")
+        printc(self.landingpath, color="green")
+        print("   auxiliary uploads:", end="")
+        printc(self.auxpath, color="green")
+        print("   erasing S3 site path:", end="")
+        printc(self.clear_sitepath, color="green")
         print("   dry run (no S3 modification):", end="")
         printc(not self.do_s3_write, color="green")
 
@@ -225,8 +270,15 @@ class S3SiteConfig:
                     message="run as dry run (no uploads to S3)?",
                     choices=["yes", "no"],
                 ),
+                inquirer.List(
+                    "in_clear",
+                    message="erase the S3 site folder before uploading new site?",
+                    choices=["yes", "no"],
+                    ignore=lambda x: x["dry"] == "yes",
+                ),
             ]
             ans = inquirer.prompt(q)
+
             print(ans["in_endpoint"] == "")
             config.endpoint = (
                 ans["in_endpoint"] if ans["in_endpoint"] else config.endpoint
@@ -241,7 +293,88 @@ class S3SiteConfig:
             config.localpath = (
                 ans["in_localpath"] if ans["in_localpath"] else config.localpath
             )
-            config.do_s3_write = False if ans["dry"] == "yes" else True
+            if ans["dry"] == "yes":
+                config.do_s3_write = False
+                config.clear_sitepath = False
+            else:
+                config.do_s3_write = True
+                config.clear_sitepath = True if ans["in_clear"] == "yes" else False
+
+    def get_upload_list(self) -> list[S3Uploadable]:
+        uploads = []
+        if self.landingpath is not None:
+            landing = S3Uploadable(
+                self.landingpath,
+                posixpath.join(self.sitepath, os.path.basename(self.landingpath)),
+            )
+            uploads.append(landing)
+
+        # later: remember to set site index page using `landing`! If MSI enables this.
+
+        # build list of everything to upload.
+        for path in [self.localpath, *self.auxpath]:
+            for root, dirs, files in os.walk(path):
+                if path == self.localpath:
+                    pathsuffix = os.path.relpath(root, path)
+                else:
+                    pathsuffix = os.path.relpath(root, os.path.dirname(root))
+
+                destpath = posixpath.normpath(posixpath.join(self.sitepath, pathsuffix))
+                for file in files:
+                    source_path = os.path.join(root, file)
+                    u = S3Uploadable(source_path, posixpath.join(destpath, file))
+                    uploads.append(u)
+
+        dests = [u.destpath for u in uploads]
+        if len(dests) != len(set(dests)):
+            warnings.warn(
+                "You are uploading multiple files to the same destination! The former(s) will be overwritten. Check your landing page naming does not conflict with the root index.html"
+            )
+
+        return uploads
+
+    def do_erase_sitepath(self, client):
+        printc(
+            f"deleting {posixpath.join(self.endpoint, self.bucket, self.sitepath)}...",
+            color="yellow",
+            end="",
+        )
+
+        paginator = client.get_paginator("list_objects_v2")
+
+        for page in paginator.paginate(Bucket=self.bucket, Prefix=self.sitepath):
+            if "Contents" not in page:
+                continue
+
+            objects = [{"Key": obj["Key"]} for obj in page["Contents"]]
+            client.delete_objects(Bucket=self.bucket, Delete={"Objects": objects})
+
+        printc("done\n", color="green")
+
+    def sync_s3(self, client):
+        uploads = self.get_upload_list()
+
+        if self.do_s3_write and self.clear_sitepath:
+            self.do_erase_sitepath(client)
+
+        for k in tqdm.trange(len(uploads), desc="uploading"):
+            tqdm.tqdm.write(
+                f"> uploading {uploads[k].srcpath} to {uploads[k].destpath}"
+            )
+            self.do_s3_write and client.upload_file(
+                uploads[k].srcpath,
+                self.bucket,
+                uploads[k].destpath,
+                ExtraArgs={"ContentType": uploads[k].mime},
+            )
+
+            # NOTE: for this to work, need to set boto3 configurations:
+            # request_checksum_calculation = when_required
+            # response_checksum_validation = when_required
+            # with environmental vars or with config file. See configuration guide
+            # here: https://docs.aws.amazon.com/boto3/latest/guide/configuration.html
+            #
+            # See boto3 issue #4398 on Github.
 
 
 ansi = {
@@ -262,28 +395,6 @@ def printc(*args, color=None, end="\n"):
         print(ansi[color.lower()], *args, ansi["reset"], end=end)
     else:
         print(*args, end=end)
-
-
-# CONFIG VARIABLES:
-# s3_bucket = "foxsi-public"  # the bucket name on S3
-# s3_site_path = "site"  # path in the bucket to upload HTML to. WILL OVERWRITE!
-# s3_data_folder = "data"  # a folder in the bucket to search for data
-# # the path on your local system to store the website on before it is uploaded:
-# local_swap_folder = os.path.abspath(
-#     os.path.join(
-#         "s3",
-#         "_site",
-#         s3_site_path,
-#     )
-# )  # in the future, I will use tempfiles for this.
-# dry_run = (
-#     False  # if True, just print what will be written without actually doing it to S3
-# )
-
-
-# s3_endpoint = "https://s3.msi.umn.edu"  # host domain for the bucket
-# def do_s3():
-#     return not dry_run
 
 
 def exists(client, bucket, filter_path):
@@ -321,6 +432,21 @@ class BFSItem:
     def __init__(self, structure: dict, path: str):
         self.structure = structure
         self.path = path
+
+
+class S3Uploadable:
+    def __init__(self, srcpath, destpath):
+        self.srcpath = srcpath
+        self.destpath = destpath
+        self.mime, _ = mimetypes.guess_type(srcpath)
+        if self.mime is None:
+            raise ValueError(f"MIME type cannot be found for {srcpath}")
+
+    def __str__(self):
+        out = "S3Uploadable:"
+        for attribute, value in vars(self).items():
+            out += f"\n  .{attribute}: {value}"
+        return out
 
 
 def displaysize(item: S3File):
@@ -406,8 +532,8 @@ class HTMLPage:
         # if building for local display, replace the CSS path:
         #   href="{posixpath.join{self.local_root, "styles.css}}" with
         #   href="{posixpath.join{self.s3_root, s3_site_path, "styles.css}}"
-        stylesheet = f"""<link rel="stylesheet" href="{posixpath.join(self.s3_root, self.config.sitepath, "styles.css")}">"""
-        favicon = f"""<link rel="icon" type="image/x-icon" href="{posixpath.join(self.s3_root, self.config.sitepath, "foxsi5icon.png")}">"""
+        stylesheet = f"""<link rel="stylesheet" href="{posixpath.join(self.s3_root, self.config.sitepath, "styles", "styles.css")}">"""
+        favicon = f"""<link rel="icon" type="image/x-icon" href="{posixpath.join(self.s3_root, self.config.sitepath, "assets", "foxsi5icon.png")}">"""
         # stylesheet = ""
         page = f"""<!DOCTYPE html>
                 <html lang="en" xml:lang="en">
@@ -505,41 +631,6 @@ def html_tree(structure: dict, config: S3SiteConfig):
             queue.extend(next_layer_down)  # put any new folders into the queue
             nlayer += 1
 
-
-def upload_folder(client, config: S3SiteConfig):
-    sources = []
-    dests = []
-    mimes = []
-    for root, dirs, files in os.walk(config.localpath):
-        pathsuffix = os.path.relpath(root, config.localpath)
-        destpath = posixpath.normpath(posixpath.join(config.sitepath, pathsuffix))
-        for file in files:
-            source_path = os.path.join(root, file)
-            mime, enc = mimetypes.guess_type(source_path)
-
-            if mime is None:
-                raise ValueError(f"MIME type cannot be found for {source_path}")
-            sources.append(source_path)
-            dests.append(posixpath.join(destpath, file))
-            mimes.append(mime)
-    for k in tqdm.trange(len(dests), desc="uploading"):
-        tqdm.tqdm.write(f"> uploading {sources[k]} to {dests[k]}")
-        config.do_s3_write and client.upload_file(
-            sources[k],
-            config.bucket,
-            dests[k],
-            ExtraArgs={"ContentType": mimes[k]},
-        )
-
-        # NOTE: for this to work, need to set boto3 configurations:
-        # request_checksum_calculation = when_required
-        # response_checksum_validation = when_required
-        # with environmental vars or with config file. See configuration guide
-        # here: https://docs.aws.amazon.com/boto3/latest/guide/configuration.html
-        #
-        # See boto3 issue #4398 on Github.
-
-
 if __name__ == "__main__":
     """A script to emit a static HTML directory listing based on the index of an S3 bucket.
 
@@ -591,7 +682,6 @@ if __name__ == "__main__":
                 # print(obj["Key"])
                 pass
 
-
     # # if you want to look at the access control list:
     # print("\ncurrent ACL:")
     # result = client.get_bucket_acl(Bucket=config.bucket)
@@ -611,9 +701,9 @@ if __name__ == "__main__":
     print("the site will be uploaded to", end="")
     printc(site_dest, color="green")
     print()
-    upload_folder(client, config)
+    config.sync_s3(client)
 
-    print("\nupdating bucket policy...")
+    print("\nupdating bucket access policy...")
     # set bucket permissions
     bucket_policy = {
         "Version": "2012-10-17",

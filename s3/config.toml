@@ -1,9 +1,22 @@
 [s3]
-dryrun = false  # if dryrun is `true`, no data will be written to S3 bucket.
-bucket = 'foxsi-public'                 # name of bucket
-datapath = 'data'                       # path in bucket to READ data files from
-sitepath = 'site'                       # path in bucket to WRITE website files
-endpoint = 'https://s3.msi.umn.edu'     # endpoint host for the bucket data
+# if s3.dryrun is `true`, no data will be written to S3 bucket.
+dryrun = true  
+
+# delete the folder `s3.endpoint/s3.bucket/s3.sitepath` before writing a new 
+# site to it.
+# good practice in order to start fresh, without unlinked pages hanging around.
+# if `s3.dryrun = true`, this option is ignored.
+clear_sitepath = true
+
+# name of bucket
+bucket = 'foxsi-public'                 
+# path in bucket to READ data files from
+datapath = 'data'                       
+# path in bucket to WRITE website files
+sitepath = 'site'                       
+# endpoint host for the bucket data
+endpoint = 'https://s3.msi.umn.edu'     
+
 
 [local]
 # valid local.path values are `false` or a path 
@@ -13,5 +26,26 @@ endpoint = 'https://s3.msi.umn.edu'     # endpoint host for the bucket data
 # folder will be created using Python's tempfile 
 # library.
 path = false
+
 # set interactive = false to disable console dialog with user when running.
 interactive = true
+
+# path to the landing page. If you edit this, make sure the links within 
+# are up-to-date.
+landingpath = 's3/static/landing.html'
+
+# to be added later.
+# 404path = 's3/static/404.html'
+
+# path to auxiliary data to upload verbatim to `s3.sitepath`. this can include
+# things like CSS stylesheets and images for the landing page.
+# 
+# these should be folders. the final folder name will be retained in the upload:
+#   if `auxpath = ['s3/styles']`, you will find the contents of `s3/styles` 
+#   inside `s3.endpoint/s3.bucket/s3.site/styles/` on upload.
+# 
+# if s3.dryrun is `true`, nothing will happen with these.
+# 
+# don't put glob patterns in here please.
+auxpath = ['s3/styles', 's3/assets']
+# auxpath = []

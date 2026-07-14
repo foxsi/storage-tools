@@ -79,7 +79,7 @@ Thanasi can provide some canned permissions files if that makes things easier.
 
 ### Before you run
 
-Check the file `config.toml` that comes with this repository. The script will read this file and prompt you through configuration as you go, but the default values should not be harmful.
+Check the file configuration file [`config.toml`](config.toml) that comes with this repository. It has plenty of comments. The script will read this file and prompt you through configuration as you go, but the default values should not be harmful.
 
 There is a helpful flag
 ```toml
@@ -87,6 +87,29 @@ There is a helpful flag
 dryrun = true
 ```
 you can set to `true` to run the script without actually doing any write operations on the S3 bucket. You'll just see the printout of files and folders that will be modified.
+
+When you run the script, it will prompt you to review the configuration and validate it before actually touching anything in the bucket.
+
+
+#### Configuration detail
+
+The [`config.toml`](config.toml) file has two headings: `[s3]`, and `[local]`. The former contains variables that affect the S3 site, and the latter contains variables that affect your own computer when you run the script. Below, the syntax `s3.endpoint` refers to the keyword `endpoint` under the header `[s3]` (and so on).
+
+There are some key values to configure:
+
+| Configuration       | Values                   | Description |
+|:--------------------|:-------------------------|:------------|
+| `s3.dryrun`         | `true`, `false`          | `true` means don't actually modify the S3 bucket, `false` means do make changes |
+| `s3.clear_sitepath` | `true`, `false` | `true` means erase the `s3.sitepath` before writing the new site, to get rid of stale info. If `s3.dryrun = true`, this setting is ignored |
+| `s3.bucket`         | a string | [A valid S3 bucket name](https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucketnamingrules.html); you should have read and write access to the bucket  |
+| `s3.datapath`       | a string | A path to a folder in the bucket which you want to build the index site for. The folder should exist already. Don't put leading or trailing slashes; all slashes should go forward `/`. |
+| `s3.sitepath`       | a string | A path to a folder in the bucket where you want to store the website files. If `s3.clear_sitepath` is `true`, this will be wiped. |
+| `s3.endpoint`       | a URL    | The host site for your S3 service. |
+| `local.path`        | a string or `false` | If `false`, use a temporary directory to save generated HTML files to before the are uploaded to S3. Otherwise provide a path to a local folder for the HTML files (useful for inspection and debugging). **Note that this path will be overwritten.** | 
+| `local.interactive` | `true`, `false` | If `true`, the script prompts the user for confirmation, edits, etc. before modifying S3. If `false` it just runs. |
+| `local.landingpath` | a string | A path to an HTML landing page, if you want to provide a landing page before the data index on the website. A sample is included in [this repository](static/landing.html). Use the empty string if you don't want a landing page. Note that this will be uploaded directly to the `s3.sitepath` root folder, so if there's another page in there with the same name, this one will be overwritten. |
+| `local.auxpath` | an array | Each element in the array should be a local path, or the array should be empty. A given folder `something` will be uploaded verbatim to `s3.sitepath/something/` with the full (recursive) contents of `something` included. This is useful for uploading assets and CSS. |
+
 
 ### Running
 
@@ -99,8 +122,6 @@ To build and upload the index website, just do this (assuming you're in the `sto
 $ python s3/make_s3_site.py
 ```
 
+You should be prompted through the configuration before your script tries to modify data on S3.
+
 _(In the future, I will add some info about interactivity, logging, and daemon execution here.)_
-
-## Issues
-
-I have not been able to upload much data yet to S3 because of hitting some quotas imposed by MSI or AWS. I will try to figure it out.
