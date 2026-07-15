@@ -1,0 +1,18 @@
+# rclone filter for moving FOXSI docs from Google My Drive to Shared Drive
+
++ *.xls
++ *.ppt
++ *.doc
++ *.xlsx
++ *.pptx
++ *.docx
++ *.drawio
++ *.key
++ *.gan
++ *.rtf
++ *.txt
++ *.pdf
++ *.md
+
+- *.pro
+- *.fits
