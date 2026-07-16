@@ -4,6 +4,8 @@ import numpy as np
 import matplotlib as mpl
 from matplotlib import pyplot as plt
 
+import tqdm
+
 code_ext = ['.c', '.cpp', '.h', '.hpp', '.py', '.jl', '.pro', '.sh', '.m', '.ipynb', '.service', '.fl', '.o', '.a', '.exe', '.pkl', '.xml']
 data_ext = ['.pcap', '.pcapng', '.dat', '.tpx', '.fits', '.mat', '.d', '.mca', '', '.log', '.root', '.csv', '.zip']
 cad_ext = ['.easm', '.dxf', '.step', '.stp', '.sldprt', '.sldasm', '.x_']
@@ -131,6 +133,13 @@ def get_modtime(lsline):
     return dt
     
 if __name__ == "__main__":
+    
+    ls_file = sys.argv[1]
+    save_dir = sys.argv[2]
+    if not os.path.isdir(save_dir):
+        print('pass in two args: a file with output of `rclone lsl`, and a folder to save plots to.')
+        exit(-1)
+    
     file_categories = [
         FileCategory('Code', code_ext),
         FileCategory('Raw data', data_ext),
@@ -145,14 +154,21 @@ if __name__ == "__main__":
     all_sizes = []
     all_dates = []
     all_data = []
-    with open(sys.argv[1], 'r') as f:
+
+    
+    # Source - https://stackoverflow.com/a/1019572    
+    linecount = sum(1 for _ in open(ls_file, 'r'))
+
+    with open(ls_file, 'r') as f:
         total_size = 0
         sizeless_count = 0
         total_count = 0
         exts = set()
         exts_sizes = {}
-        csv = ''
-        for k,line in enumerate(f):
+        csvlines = []
+        
+        for k,line in enumerate(tqdm.tqdm(f, desc='ingesting ls...', total=linecount)):
+            
             # count all files
             total_count += 1
 
@@ -164,7 +180,9 @@ if __name__ == "__main__":
             dt = get_modtime(line)
             path = get_path(line)
 
-            csv += 'n' + ';' + str(size) + ';' + dt.strftime('%Y-%m-%d %H:%M:%S.%f') + ';' + path
+            # thiscsvline = ''
+            thiscsvline = 'n' + ';' + str(size) + ';' + dt.strftime('%Y-%m-%d %H:%M:%S.%f') + ';' + path
+            csvlines.append(thiscsvline)
 
             # add this to the list of known extensions
             if ext not in exts:
@@ -185,8 +203,8 @@ if __name__ == "__main__":
 
         # sort file size data 
         exts_sizes = dict(sorted(exts_sizes.items(), key=lambda item: item[1], reverse=True))
-        with open('/Users/thanasi/Documents/FOXSI/Data/storage/ls.csv', 'w') as f:
-            f.write(csv)
+        with open(os.path.join(save_dir, 'ls.csv'), 'w') as f:
+            f.write(''.join(csvlines))
 
         print('\nSize by extension -----------------')
         print(display_ext(exts_sizes, unit='GB'))
@@ -240,7 +258,7 @@ if __name__ == "__main__":
     ax.stackplot(dates, stack_sizes.T, labels=typewise.keys())
     ax.legend()
     
-    fig.savefig('/Users/thanasi/Documents/FOXSI/Data/storage/historical-linear.pdf', transparent=True)
+    fig.savefig(os.path.join(save_dir, 'historical-linear.pdf'), transparent=True)
 
     fig, ax = plt.subplots(1,1,figsize=(7,5))
     ax.plot(dates, sizes, linewidth=1, color='black', label='Total')
@@ -254,7 +272,7 @@ if __name__ == "__main__":
     ax.set_yscale('log')
     ax.set_ylim([1e-2, 1e4])
     ax.legend()
-    fig.savefig('/Users/thanasi/Documents/FOXSI/Data/storage/historical-log.pdf', transparent=True)
+    fig.savefig(os.path.join(save_dir, 'historical-log.pdf'), transparent=True)
     
     
     plt.show()
