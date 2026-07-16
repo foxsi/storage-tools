@@ -1,0 +1,360 @@
+# exhaustive list of filetypes on Google Drive.
+# this is organized in decreasing order of space used on the drive.
+#
+# CAD files are retained in the transfer, but we could revisit this decision.
+# code source files (but not build products) are retained for now, but should be on Github instead.
+
+
+- *.zip
+- *.dat
+- *.log
+- *.pcapng
+- *.pcap
++ *.mov
+- *.root
+
+# the bulk (by volume) of our .txt files are FOXSI-3 detector data files from ALS tests.
+- *.txt
+
+- *.fits
++ *.pickle
+
+# this is entirely driven by the FOXSI-5 Timepix flight data .tar.
+- *.tar
+
+# these seem to be pixelated attenuator 
+- *.img
+
++ *.mp4
+
+# these are Nikon images from laser alignment. probably class these as calibration data.
+- *.nef
+
++ *.png
++ *.jpg
++ *.pdf
+
+# these are all arch linux images for the old SAAS board.
+- *.iso
+
++ *.pptx
+- *.tpx
+- *.sav
++ *.heic
++ *.sldasm
+
+# .bmps do appear to be SAAS alignment/calibration data, but are kept for now.
++ *.bmp
+
++ *.sldprt
++ *.step
++ *.key
+
+# a video format (Windows). Only one exists, it's from FOXSI-3 launch.
++ *.wmv
+
+# retain these because they mix documentation and code.
++ *.ipynb
+ 
++ *.pkl
++ *.dxf
++ *.slddrw
++ *.stp
+
+# assume these are C/C++ unlinked files. Don't need to keep every build.
+- *.o
+
++ *.jpeg
++ *.eps
+
+# Photoshop
++ *.psd
+
+# response. These should move to data storage.
+- *.rmf
+
+# raw data, but from vibration table. 
+- *.vrd
+
++ *.mpg
++ *.xlsx
+
+- *.exe
+- *.a
+
++ *.rtf
+- *._20250703_vth12_00001_001
+- *._20250703_vth16_00001_001
+
+# mostly Timepix config info, some CdTe configs. Should be saved elsewhere with code, but keep code source files for now.
++ *.xml
+
+# these are from macOS Instruments debugs of formatter software
+- *.template
+
+- *.dta
+
+# case-by-case, mixture of docs and data
++ *.csv
+
++ *.ppt
+
+# more vibe table data.
+- *.vsd
+
++ *.easm
++ *.bak
++ *.gif
++ *.doc
++ *.ps
++ *.docx
+
+# some thermal camera image
++ *.is2
+
++ *.x_t
++ *.drawio
+
+# probably should skip these, mostly TeX projects and software bundles
++ *.gz
+
+# FLTK GSE
++ *.pbxsymbols
+
+- *.dylib
++ *.xls
+
+# more macOS Instruments debugs of formatter
+- *.symbolsarchive
+ *.0
+ 
++ *.pbxbtree
++ *.mp3
++ *.bit
++ *.ai
+
+# this is for git
+- *.pack
+
++ *.c
++ *.py
++ *.avi
++ *.pages
++ *.db
++ *.h
+- *.1
++ *.icns
++ *.cam
+- *.mca
+- *.ds_store
++ *.tex
++ *.cpp
++ *.stl
++ *.hh
++ *.mat
++ *.cxx
++ *.mpp
++ *.json
++ *.f
+- *.orig
+- *.bundle
++ *.pyc
+- *.2
++ *.sh
+
+
+- *.storedata
+
++ *.dvi
+- *.mode1v3
+- *.o~$
+- *.dep
+- *.data
++ *.make
++ *.npz
++ *.m4
+- *.includecache
++ *.plist
++ *.mxtmacros
++ *.cc
++ *.pbxuser
++ *.cmake
++ *.bin
++ *.cls
++ *.sample
++ *.xib
+- *.out
++ *.in
++ *.pbxproj
+- *.idx
+- *.internal
++ *.md
+- *.torrent
++ *.aux
++ *.xmp
++ *.fl
++ *.pro
+- *.mode1
+- *.svn-base
++ *.svg
+- *.index
++ *.cmp
++ *.dsn
++ *.html
+- *.guess
+- *.linkfilelist
+- *.etypes
++ *.gan
++ *.hpp
++ *.sub
++ *.inc
++ *.def
+- *.xcuserstate
++ *.m
++ *.readme
++ *.com
+- *.creq
++ *.cql
++ *.pos
+
+# response. these should move to storage
+- *.arf
+- *.dat~
+- *.def~
++ *.jis
++ *.hmap
++ *.80
++ *.nc
++ *.pat
++ *.70
++ *.i
++ *.rb
+- *.5kev
++ *.hdf5
++ *.go
+- *.tmpl
++ *.xcscheme
++ *.intelmac
++ *.sized_io
+- *.make~
++ *.7z
++ *.00
++ *.mediawiki
+- *.ipynb copy
+- *.pl
++ *.81
++ *.m1mac
+- *.obsolete
++ *.01
++ *.ac
++ *.90
++ *.60
++ *.mm
++ *.bat
++ *.ini
+- *.rasp
+- *.raspiarm64
+- *.o~>
++ *.gitignore
++ *.tgz
++ *.css
++ *.am
++ *.set
++ *.rst
+- *._master
++ *.tran
++ *.webloc
+- *.61
+- *.check_cache
+- *._head
+- *.strings
+- *.versions
+- *.versions~
+- *._branches
+- *.git
+- *._debug
+- *._refs
+- *._info
+- *._heads
+- *._remotes
+- *._origin
+- *._upstream
++ *.service
+- *.build
++ *.header
++ *.top
+- *.xcsettings
+- *.xcworkspacedata
++ *.url
+- *._foxsigse
+- *._examples
+- *._resources
+- *._libs
+- *.lproj
+- *._documentation
+- *._usbgse3
+- *._foxsisercmdsb
+- *._hooks
+- *._objects
+- *._commit_editmsg
+- *._index
+- *._fetch_head
+- *._orig_head
+- *._config
+- *._packed-refs
+- *._logs
+- *._description
+- *._c8
+- *._e7
+- *._b5
+- *._e1
+- *._97
+- *._6a
+- *._9d
+- *._82
+- *._9e
+- *._4e
+- *._42
+- *._26
+- *._3e
+- *._62
+- *._20
+- *._02
+- *._0c
+- *._16
+- *._20120313
+- *._gsetest
+- *._21
+- *._9f
+- *._68
+- *._makefile
+- *._pack
+- *._tags
+- *._exclude
++ *.pbxstrings
+- *._objects-normal
+- *._control
+- *._strings
+- *._x86_64
++ *.yml
++ *.cfg
+- *.o~?
+- *._build
++ *.pbxindex
++ *.pch
++ *.xcbkptlist
++ *.dropbox
++ *.inf
++ *.mod
++ *.marks
++ *.mp
+- *.txt~
++ *.tui
+- *.pptx" detected
+- *.stamp
+
+# ignore git folders
+- .git/**
+
+# extensionless files are probably CdTe data, but may include bare READMEs and executable binaries.
+- **

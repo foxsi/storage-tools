@@ -43,3 +43,9 @@ This is a good one to copy everything. Probably want to add some logging to it.
 $ rclone copy --drive-shared-with-me --filter-from drive/filter-drive.txt foxsi4_google:FOXSI/ foxsi_shared: -P
 ```
 
+## To do for Thanasi
+
+- [ ] Find the `*.img` files. These seem to be raw data from the pixelated attuator tests at SPring-8. Back these up to raw data storage, don't migrate.
+- [ ] For `*.txt` files: most of the volume is from FOXSI-3 detector data, particularly at the ALS. Back these up to raw data storage, don't migrate. There are also plenty of terminal printouts and some LISS data stored as `.txt`.
+- [ ] For `*.vrd`, `*.vsd` files: these look like vibration test data. I'm not migrating these but they should be referenced somewhere in the new world.
+- [ ] For `*.dta` files: these look like launch data from NSROC. Should be put in with data storage.
