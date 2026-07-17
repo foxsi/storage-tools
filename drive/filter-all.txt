@@ -126,7 +126,7 @@
 
 # more macOS Instruments debugs of formatter
 - *.symbolsarchive
- *.0
+- *.0
  
 + *.pbxbtree
 + *.mp3
@@ -145,6 +145,8 @@
 - *.1
 + *.icns
 + *.cam
+
+# Amptek raw file, I think
 - *.mca
 - *.ds_store
 + *.tex
