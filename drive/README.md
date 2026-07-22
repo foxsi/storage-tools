@@ -49,3 +49,7 @@ $ rclone copy --drive-shared-with-me --filter-from drive/filter-drive.txt foxsi4
 - [ ] For `*.txt` files: most of the volume is from FOXSI-3 detector data, particularly at the ALS. Back these up to raw data storage, don't migrate. There are also plenty of terminal printouts and some LISS data stored as `.txt`.
 - [ ] For `*.vrd`, `*.vsd` files: these look like vibration test data. I'm not migrating these but they should be referenced somewhere in the new world.
 - [ ] For `*.dta` files: these look like launch data from NSROC. Should be put in with data storage.
+- [ ] The root `Presentations` folder doesn't want to transfer. Seems like a permissions thing. Move this manually.
+
+### For the weary
+- `rclone ls` commands on a Google Shared drive do not report any file extension for Google Docs. But the same command family, run on a Google My Drive, *do* report file extensions. 
